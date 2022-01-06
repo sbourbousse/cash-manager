@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog logicalFilePath="changelog-1.0.xml"
+                   xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.4.xsd">
+
+    <changeSet id="create_compte" author="Maxime">
+        <createTable tableName="comptes">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="solde" type="FLOAT(10, 2)"/>
+        </createTable>
+        <addAutoIncrement columnDataType="INT" tableName="comptes" columnName="id"/>
+    </changeSet>
+    <changeSet id="create_products" author="Maxime">
+        <createTable tableName="products">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="name" type="VARCHAR(255)"/>
+            <column name="price" type="FLOAT(10,2)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="create_cart" author="Maxime">
+        <createTable tableName="cart">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="u_id" type="VARCHAR(255)"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="create_cart_product" author="Maxime">
+        <createTable tableName="cart_product">
+            <column name="id" type="INT" autoIncrement="true">
+                <constraints primaryKey="true"/>
+            </column>
+            <column name="cart_id" type="INT"/>
+            <column name="product_id" type="INT"/>
+            <column name="amount" type="INT"/>
+        </createTable>
+    </changeSet>
+    <changeSet id="init-table-products" author="Maxime">
+        <insert tableName="products">
+            <column name="name" value="Produit 1"/>
+            <column name="price" value="10.5"/>
+        </insert>
+        <insert tableName="products">
+            <column name="name" value="Produit 2"/>
+            <column name="price" value="120"/>
+        </insert>
+        <insert tableName="products">
+            <column name="name" value="Produit 3"/>
+            <column name="price" value="7.99"/>
+        </insert>
+        <insert tableName="products">
+            <column name="name" value="Produit 4"/>
+            <column name="price" value="50"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>
