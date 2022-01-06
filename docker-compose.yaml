@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: "dev"
+      # MYSQL_USER: "root"
+      MYSQL_PASSWORD: "root"
+    ports:
+      - "3306:3306"
+    volumes:
+      - data:/var/lib/mysql/data
+  # app-server:
+  #   build: 
+  #     context: ./backend
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - db
+  # front:
+  #   build: ./mobile_app
+  #   depends_on:
+  #     - backend
+volumes:
+  data:

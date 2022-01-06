@@ -1,0 +1,205 @@
+build-api:
+  stage: build-code
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: never
+    - if: $CI_COMMIT_TAG
+    - changes:
+        - backend-domain/**/*
+    - changes:
+        - backend-web/**/*
+    - changes:
+        - .gitlab-ci.yml
+    - changes:
+        - gitlab-ci/gitlab-api.yml
+    - when: never
+  image: maven:3-jdk-11
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  script:
+    - mvn -B package
+  cache:
+    paths:
+      - .m2/repository/
+  artifacts:
+    paths:
+      - backend-web/target/dependency/
+
+build-image-api-dev:
+  stage: build-image
+  rules:
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - backend-domain/**/*
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - backend-web/**/*
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - gitlab-ci/gitlab-api.yml
+    - when: never
+  image: google/cloud-sdk
+  script:
+    - gcloud auth activate-service-account --key-file=$GCP_EP2_CREDS
+    - gcloud config set project ep2-cresus
+    - gcloud config set gcloudignore/enabled false
+    - |
+      cat << EOF > cloudbuild.yaml
+      steps:
+      - name: 'gcr.io/cloud-builders/docker'
+        args: ['build', '-t', 'eu.gcr.io/ep2-cresus/ep2-api:latest', 'backend-web/']
+      - name: 'gcr.io/cloud-builders/docker'
+        args: ['push', 'eu.gcr.io/ep2-cresus/ep2-api:latest']
+      EOF
+    - gcloud builds submit --config cloudbuild.yaml .
+  needs:
+    - job: build-api
+      artifacts: true
+
+build-image-api-tag:
+  stage: build-image
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+      when: never
+    - if: $CI_COMMIT_TAG
+    - when: never
+  image: google/cloud-sdk
+  script:
+    - gcloud auth activate-service-account --key-file=$GCP_EP2_CREDS
+    - gcloud config set project ep2-cresus
+    - gcloud config set gcloudignore/enabled false
+    - |
+      cat << EOF > cloudbuild.yaml
+      steps:
+      - name: 'gcr.io/cloud-builders/docker'
+        args: ['build', '-t', 'eu.gcr.io/ep2-cresus/ep2-api:$CI_COMMIT_TAG', 'backend-web/']
+      - name: 'gcr.io/cloud-builders/docker'
+        args: ['push', 'eu.gcr.io/ep2-cresus/ep2-api:$CI_COMMIT_TAG']
+      EOF
+    - gcloud builds submit --config cloudbuild.yaml .
+  needs:
+    - job: build-api
+      artifacts: true
+
+deploy-api-dev:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - backend-domain/**/*
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - backend-web/**/*
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH == "development"
+      changes:
+        - gitlab-ci/gitlab-api.yml
+    - when: never
+  image: google/cloud-sdk
+  script:
+    - gcloud auth activate-service-account --key-file=$GCP_EP2_CREDS
+    - gcloud config set project ep2-cresus
+    - gcloud config set gcloudignore/enabled false
+    - |
+      cat << EOF > cloudbuild.yaml
+      steps:
+      - name: 'gcr.io/cloud-builders/gcloud'
+        args:
+        - 'run'
+        - 'deploy'
+        - 'ep2-api-dev'
+        - '--image'
+        - 'eu.gcr.io/ep2-cresus/ep2-api:latest'
+        - '--region'
+        - 'europe-west1'
+        - '--platform'
+        - 'managed'
+        - '--allow-unauthenticated'
+        - '--set-env-vars=SPRING_PROFILES_ACTIVE=gcpdev'
+        - '--set-cloudsql-instances=ep2-cresus:europe-west1:ep2-mysql'
+        - '--cpu=1'
+        - '--memory=1Gi'
+        - '--max-instances=1'
+      EOF
+    - gcloud builds submit --config cloudbuild.yaml .
+  needs:
+    - job: build-api
+      artifacts: false
+    - job: build-image-api-dev
+      artifacts: false
+
+deploy-api-recette:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG
+    - when: never
+  image: google/cloud-sdk
+  script:
+    - gcloud auth activate-service-account --key-file=$GCP_EP2_CREDS
+    - gcloud config set project ep2-cresus
+    - gcloud config set gcloudignore/enabled false
+    - |
+      cat << EOF > cloudbuild.yaml
+      steps:
+      - name: 'gcr.io/cloud-builders/gcloud'
+        args:
+        - 'run'
+        - 'deploy'
+        - 'ep2-api-recette'
+        - '--image'
+        - 'eu.gcr.io/ep2-cresus/ep2-api:$CI_COMMIT_TAG'
+        - '--region'
+        - 'europe-west1'
+        - '--platform'
+        - 'managed'
+        - '--allow-unauthenticated'
+        - '--set-env-vars=SPRING_PROFILES_ACTIVE=gcprecette'
+        - '--set-cloudsql-instances=ep2-cresus:europe-west1:ep2-mysql'
+        - '--cpu=1'
+        - '--memory=1Gi'
+        - '--max-instances=1'
+      EOF
+    - gcloud builds submit --config cloudbuild.yaml .
+  needs:
+    - job: build-api
+      artifacts: false
+    - job: build-image-api-tag
+      artifacts: false
+
+deploy-api-prod:
+  stage: deploy
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_TAG && $DEPLOY == "api"'
+    - when: never
+  image: google/cloud-sdk
+  script:
+    - gcloud auth activate-service-account --key-file=$GCP_EP2_CREDS
+    - gcloud config set project ep2-cresus
+    - gcloud config set gcloudignore/enabled false
+    - |
+      cat << EOF > cloudbuild.yaml
+      steps:
+      - name: 'gcr.io/cloud-builders/gcloud'
+        args:
+        - 'run'
+        - 'deploy'
+        - 'ep2-api'
+        - '--image'
+        - 'eu.gcr.io/ep2-cresus/ep2-api:$CI_COMMIT_TAG'
+        - '--region'
+        - 'europe-west1'
+        - '--platform'
+        - 'managed'
+        - '--allow-unauthenticated'
+        - '--set-env-vars=SPRING_PROFILES_ACTIVE=gcpprod'
+        - '--set-cloudsql-instances=ep2-cresus:europe-west1:ep2-mysql'
+        - '--cpu=1'
+        - '--memory=1Gi'
+        - '--max-instances=1'
+      EOF
+    - gcloud builds submit --config cloudbuild.yaml .
