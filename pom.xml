@@ -17,4 +17,16 @@
     <name>Backend</name>
     <description>Le root du backend pour le projet DEV</description>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-tomcat</artifactId>
+            <scope>provided</scope>
+            <version>2.6.2</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>${artifactId}</finalName>
+    </build>
 </project>
